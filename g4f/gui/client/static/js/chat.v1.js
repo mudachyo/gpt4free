@@ -10,13 +10,14 @@ const sendButton        = document.getElementById("send-button");
 const imageInput        = document.getElementById("image");
 const cameraInput       = document.getElementById("camera");
 const fileInput         = document.getElementById("file");
-const microLabel        = document.querySelector(".micro-label")
-const inputCount        = document.getElementById("input-count")
+const microLabel        = document.querySelector(".micro-label");
+const inputCount        = document.getElementById("input-count");
 const providerSelect    = document.getElementById("provider");
 const modelSelect       = document.getElementById("model");
 const modelProvider     = document.getElementById("model2");
-const systemPrompt      = document.getElementById("systemPrompt")
-const settings          = document.querySelector(".settings")
+const systemPrompt      = document.getElementById("systemPrompt");
+const settings          = document.querySelector(".settings");
+const album             = document.querySelector(".images");
 
 let prompt_lock = false;
 
@@ -42,11 +43,17 @@ appStorage = window.localStorage || {
 const markdown = window.markdownit();
 const markdown_render = (content) => {
     return markdown.render(content
-        .replaceAll(/<!-- generated images start -->[\s\S]+<!-- generated images end -->/gm, "")
+        .replaceAll(/<!-- generated images start -->|<!-- generated images end -->/gm, "")
         .replaceAll(/<img data-prompt="[^>]+">/gm, "")
     )
         .replaceAll("<a href=", '<a target="_blank" href=')
         .replaceAll('<code>', '<code class="language-plaintext">')
+}
+
+function filter_message(text) {
+    return text.replaceAll(
+        /<!-- generated images start -->[\s\S]+<!-- generated images end -->/gm, ""
+    )
 }
 
 hljs.addPlugin(new CopyButtonPlugin());
@@ -57,14 +64,15 @@ const highlight = (container) => {
             hljs.highlightElement(el);
         }
     });
-    typesetPromise = typesetPromise.then(
-        () => MathJax.typesetPromise([container])
-    ).catch(
-        (err) => console.log('Typeset failed: ' + err.message)
-    );
+    if (window.MathJax) {
+        typesetPromise = typesetPromise.then(
+            () => MathJax.typesetPromise([container])
+        ).catch(
+            (err) => console.log('Typeset failed: ' + err.message)
+        );
+    }
 }
 
-let stopped = false;
 const register_message_buttons = async () => {
     document.querySelectorAll(".message .fa-xmark").forEach(async (el) => {
         if (!("click" in el.dataset)) {
@@ -95,69 +103,76 @@ const register_message_buttons = async () => {
         if (!("click" in el.dataset)) {
             el.dataset.click = "true";
             el.addEventListener("click", async () => {
-                if ("active" in el.classList || window.doSpeech) {
-                    el.classList.add("blink")
-                    stopped = true;
-                    return;
+                let playlist = [];
+                function play_next() {
+                    const next = playlist.shift();
+                    if (next)
+                        next.play();
                 }
-                if (stopped) {
+                if (el.dataset.stopped) {
                     el.classList.remove("blink")
-                    stopped = false;
+                    delete el.dataset.stopped;
                     return;
                 }
+                if (el.dataset.running) {
+                    el.dataset.stopped = true;
+                    el.classList.add("blink")
+                    playlist = [];
+                    return;
+                }
+                el.dataset.running = true;
                 el.classList.add("blink")
                 el.classList.add("active")
-                const message_el = el.parentElement.parentElement.parentElement;
                 const content_el = el.parentElement.parentElement;
+                const message_el = content_el.parentElement;
                 let speechText = await get_message(window.conversation_id, message_el.dataset.index);
 
+                speechText = speechText.replaceAll(/([^0-9])\./gm, "$1.;");
+                speechText = speechText.replaceAll("?", "?;");
                 speechText = speechText.replaceAll(/\[(.+)\]\(.+\)/gm, "($1)");
-                speechText = speechText.replaceAll("`", "").replaceAll("#", "")
-                speechText = speechText.replaceAll(
-                    /<!-- generated images start -->[\s\S]+<!-- generated images end -->/gm,
-                    ""
-                )
+                speechText = speechText.replaceAll(/```[a-z]+/gm, "");
+                speechText = filter_message(speechText.replaceAll("`", "").replaceAll("#", ""))
+                const lines = speechText.trim().split(/\n|;/).filter(v => v.trim());
 
-                const lines = speechText.trim().split(/\n|\.|;/);
-                let ended = true;
                 window.onSpeechResponse = (url) => {
-                    el.classList.remove("blink")
+                    if (!el.dataset.stopped) {
+                        el.classList.remove("blink")
+                    }
                     if (url) {
                         var sound = document.createElement('audio');
                         sound.controls = 'controls';
                         sound.src = url;
                         sound.type = 'audio/wav';
-                        if (ended && !stopped) {
-                            sound.autoplay = true;
-                        }
                         sound.onended = function() {
-                            ended = true;
+                            el.dataset.do_play = true;
+                            setTimeout(play_next, 1000);
                         };
                         sound.onplay = function() {
-                            ended = false;
+                            delete el.dataset.do_play;
                         };
                         var container = document.createElement('div');
                         container.classList.add("audio");
                         container.appendChild(sound);
                         content_el.appendChild(container);
-                    }
-                    if (lines.length < 1 || stopped) {
-                        el.classList.remove("active");
-                        return;
-                    }
-                    while (lines.length > 0) {
-                        let line = lines.shift();
-                        var reg = new RegExp('^[0-9]$');
-                        if (line && !reg.test(line)) {
-                            return handleGenerateSpeech(line);
+                        if (!el.dataset.stopped) {
+                            playlist.push(sound);
+                            if (el.dataset.do_play) {
+                                play_next();
+                            }
                         }
                     }
-                    if (!line) {
-                        el.classList.remove("active")
+                    let line = lines.length > 0 ? lines.shift() : null;
+                    if (line && !el.dataset.stopped) {
+                        handleGenerateSpeech(line);
+                    } else {
+                        el.classList.remove("active");
+                        el.classList.remove("blink");
+                        delete el.dataset.running;
                     }
                 }
+                el.dataset.do_play = true;
                 let line = lines.shift();
-                return handleGenerateSpeech(line);
+                handleGenerateSpeech(line);
             });
         }
     });
@@ -399,7 +414,7 @@ const ask_gpt = async () => {
             provider = "Bing";
         let api_key = null;
         if (provider)
-            api_key = document.getElementById(`${provider}-api_key`)?.value;
+            api_key = document.getElementById(`${provider}-api_key`)?.value || null;
         await api("conversation", {
             id: window.token,
             conversation_id: window.conversation_id,
@@ -564,12 +579,14 @@ const load_conversation = async (conversation_id, scroll=true) => {
         `;
     }
 
-    const filtered = prepare_messages(messages, false);
-    if (filtered.length > 0) {
-        last_model = last_model?.startsWith("gpt-4") ? "gpt-4" : "gpt-3.5-turbo"
-        let count_total = GPTTokenizer_cl100k_base?.encodeChat(filtered, last_model).length
-        if (count_total > 0) {
-            elements += `<div class="count_total">(${count_total} tokens used)</div>`;
+    if (window.GPTTokenizer_cl100k_base) {
+        const filtered = prepare_messages(messages, false);
+        if (filtered.length > 0) {
+            last_model = last_model?.startsWith("gpt-4") ? "gpt-4" : "gpt-3.5-turbo"
+            let count_total = GPTTokenizer_cl100k_base?.encodeChat(filtered, last_model).length
+            if (count_total > 0) {
+                elements += `<div class="count_total">(${count_total} tokens used)</div>`;
+            }
         }
     }
 
@@ -603,27 +620,20 @@ async function save_conversation(conversation_id, conversation) {
 }
 
 async function get_messages(conversation_id) {
-    let conversation = await get_conversation(conversation_id);
+    const conversation = await get_conversation(conversation_id);
     return conversation?.items || [];
 }
 
 async function add_conversation(conversation_id, content) {
-    if (content.length > 17) {
-        title = content.substring(0, 17) + '...'
-    } else {
-        title = content + '&nbsp;'.repeat(19 - content.length)
-    }
-
     if (appStorage.getItem(`conversation:${conversation_id}`) == null) {
         await save_conversation(conversation_id, {
             id: conversation_id,
-            title: title,
+            title: "",
             added: Date.now(),
             system: systemPrompt?.value,
             items: [],
         });
     }
-
     history.pushState({}, null, `/chat/${conversation_id}`);
 }
 
@@ -692,30 +702,46 @@ const load_conversations = async () => {
             conversations.push(JSON.parse(conversation));
         }
     }
+    conversations.sort((a, b) => (b.updated||0)-(a.updated||0));
 
     await clear_conversations();
 
-    for (conversation of conversations) {
+    let html = "";
+    conversations.forEach((conversation) => {
+        if (conversation?.items.length > 0) {
+            let old_value = conversation.title;
+            let new_value = (conversation.items[0]["content"]).trim();
+            let new_lenght = new_value.indexOf("\n");
+            new_lenght = new_lenght > 200 || new_lenght < 0 ? 200 : new_lenght;
+            conversation.title = new_value.substring(0, new_lenght);
+            if (conversation.title != old_value) {
+                appStorage.setItem(
+                    `conversation:${conversation.id}`,
+                    JSON.stringify(conversation)
+                );
+            }
+        }
         let updated = "";
         if (conversation.updated) {
             const date = new Date(conversation.updated);
             updated = date.toLocaleString('en-GB', {dateStyle: 'short', timeStyle: 'short', monthStyle: 'short'});
             updated = updated.replace("/" + date.getFullYear(), "")
         }
-        box_conversations.innerHTML += `
+        html += `
             <div class="convo" id="convo-${conversation.id}">
                 <div class="left" onclick="set_conversation('${conversation.id}')">
                     <i class="fa-regular fa-comments"></i>
                     <span class="convo-title"><span class="datetime">${updated}</span> ${conversation.title}</span>
                 </div>
-                <i onclick="show_option('${conversation.id}')" class="fa-regular fa-trash" id="conv-${conversation.id}"></i>
+                <i onclick="show_option('${conversation.id}')" class="fa-solid fa-ellipsis-vertical" id="conv-${conversation.id}"></i>
                 <div id="cho-${conversation.id}" class="choise" style="display:none;">
-                    <i onclick="delete_conversation('${conversation.id}')" class="fa-regular fa-check"></i>
+                    <i onclick="delete_conversation('${conversation.id}')" class="fa-regular fa-trash"></i>
                     <i onclick="hide_option('${conversation.id}')" class="fa-regular fa-x"></i>
                 </div>
             </div>
         `;
-    }
+    });
+    box_conversations.innerHTML += html;
 };
 
 document.getElementById("cancelButton").addEventListener("click", async () => {
@@ -788,6 +814,17 @@ function open_settings() {
     }
 }
 
+function open_album() {
+    if (album.classList.contains("hidden")) {
+        sidebar.classList.remove("shown");
+        settings.classList.add("hidden");
+        album.classList.remove("hidden");
+        history.pushState({}, null, "/images/");
+    } else {
+        album.classList.add("hidden");
+    }
+}
+
 const register_settings_storage = async () => {
     optionElements.forEach((element) => {
         if (element.type == "textarea") {
@@ -804,6 +841,7 @@ const register_settings_storage = async () => {
                         appStorage.setItem(element.id, element.selectedIndex);
                         break;
                     case "text":
+                    case "number":
                         appStorage.setItem(element.id, element.value);
                         break;
                     default:
@@ -828,6 +866,7 @@ const load_settings_storage = async () => {
                     element.selectedIndex = parseInt(value);
                     break;
                 case "text":
+                case "number":
                 case "textarea":
                     element.value = value;
                     break;
@@ -887,14 +926,18 @@ colorThemes.forEach((themeOption) => {
 
 function count_tokens(model, text) {
     if (model) {
+        if (window.llamaTokenizer)
         if (model.startsWith("llama2") || model.startsWith("codellama")) {
-            return llamaTokenizer?.encode(text).length;
+            return llamaTokenizer.encode(text).length;
         }
+        if (window.mistralTokenizer)
         if (model.startsWith("mistral") || model.startsWith("mixtral")) {
-            return mistralTokenizer?.encode(text).length;
+            return mistralTokenizer.encode(text).length;
         }
     }
-    return GPTTokenizer_cl100k_base?.encode(text).length;
+    if (window.GPTTokenizer_cl100k_base) {
+        return GPTTokenizer_cl100k_base.encode(text).length;
+    }
 }
 
 function count_words(text) {
@@ -1228,12 +1271,12 @@ if (SpeechRecognition) {
     }
 
     let startValue;
-    let lastValue;
     let timeoutHandle;
+    let lastDebounceTranscript;
     recognition.onstart = function() {
         microLabel.classList.add("recognition");
         startValue = messageInput.value;
-        lastValue = "";
+        lastDebounceTranscript = "";
         timeoutHandle = window.setTimeout(may_stop, 8000);
     };
     recognition.onend = function() {
@@ -1244,22 +1287,27 @@ if (SpeechRecognition) {
             return;
         }
         window.clearTimeout(timeoutHandle);
-        let newText;
-        Array.from(event.results).forEach((result) => {
-            newText = result[0].transcript;
-            if (newText && newText != lastValue) {
-                messageInput.value = `${startValue ? startValue+"\n" : ""}${newText.trim()}`;
-                if (result.isFinal) {
-                    lastValue = newText;
-                    startValue = messageInput.value;
-                    messageInput.focus();
-                }
-                messageInput.style.height = messageInput.scrollHeight  + "px";
-                messageInput.scrollTop = messageInput.scrollHeight;
+
+        let result = event.results[event.resultIndex];
+        let isFinal = result.isFinal && (result[0].confidence > 0);
+        let transcript = result[0].transcript;
+        if (isFinal) {
+            if(transcript == lastDebounceTranscript) {
+                return;
             }
-        });
-        window.clearTimeout(timeoutHandle);
-        timeoutHandle = window.setTimeout(may_stop, newText ? 8000 : 5000);
+            lastDebounceTranscript = transcript;
+        }
+        if (transcript) {
+            messageInput.value = `${startValue ? startValue+"\n" : ""}${transcript.trim()}`;
+            if (isFinal) {
+                startValue = messageInput.value;
+                messageInput.focus();
+            }
+            messageInput.style.height = messageInput.scrollHeight  + "px";
+            messageInput.scrollTop = messageInput.scrollHeight;
+        }
+
+        timeoutHandle = window.setTimeout(may_stop, transcript ? 8000 : 5000);
     };
 
     microLabel.addEventListener("click", () => {
