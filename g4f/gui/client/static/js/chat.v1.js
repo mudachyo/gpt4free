@@ -1026,9 +1026,10 @@ async function on_api() {
     });
 
     providers = await api("providers")
-    providers.forEach((provider) => {
+    Object.entries(providers).forEach(([provider, label]) => {
         let option = document.createElement("option");
-        option.value = option.text = provider;
+        option.value = provider;
+        option.text = label;
         providerSelect.appendChild(option);
     })
 
@@ -1262,7 +1263,7 @@ if (SpeechRecognition) {
 
     function may_stop() {
         if (microLabel.classList.contains("recognition")) {
-            //recognition.stop();
+            recognition.stop();
         }
     }
 
@@ -1272,15 +1273,12 @@ if (SpeechRecognition) {
     recognition.onstart = function() {
         microLabel.classList.add("recognition");
         startValue = messageInput.value;
-        messageInput.placeholder = "";
         lastDebounceTranscript = "";
         timeoutHandle = window.setTimeout(may_stop, 10000);
     };
     recognition.onend = function() {
         microLabel.classList.remove("recognition");
-        messageInput.value = messageInput.placeholder;
-        messageInput.placeholder = "Ask a question";
-        //messageInput.focus();
+        messageInput.focus();
     };
     recognition.onresult = function(event) {
         if (!event.results) {
@@ -1298,9 +1296,9 @@ if (SpeechRecognition) {
             lastDebounceTranscript = transcript;
         }
         if (transcript) {
-            messageInput.placeholder = `${startValue ? startValue+"\n" : ""}${transcript.trim()}`;
+            messageInput.value = `${startValue ? startValue+"\n" : ""}${transcript.trim()}`;
             if (isFinal) {
-                startValue = messageInput.placeholder;
+                startValue = messageInput.value;
             }
             messageInput.style.height = messageInput.scrollHeight  + "px";
             messageInput.scrollTop = messageInput.scrollHeight;
