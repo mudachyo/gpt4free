@@ -4,27 +4,32 @@ from dataclasses import dataclass
 
 from .Provider import RetryProvider, ProviderType
 from .Provider import (
+    Aichatos,
+    Bing,
+    Blackbox,
     Chatgpt4Online,
-    PerplexityLabs,
-    GeminiProChat,
+    ChatgptAi,
     ChatgptNext,
+    Cohere,
+    Cnote,
+    DeepInfra,
+    Feedough,
+    FreeGpt,
+    Gemini,
+    GeminiProChat,
+    GigaChat,
     HuggingChat,
     HuggingFace,
-    OpenaiChat,
-    ChatgptAi,
-    DeepInfra,
-    GigaChat,
-    Liaobots,
-    FreeGpt,
-    Llama2,
-    Vercel,
-    Gemini,
     Koala,
-    Cohere,
-    Bing,
-    You,
+    Liaobots,
+    Llama,
+    OpenaiChat,
+    PerplexityLabs,
     Pi,
+    Vercel,
+    You,
 )
+
 
 @dataclass(unsafe_hash=True)
 class Model:
@@ -79,6 +84,9 @@ gpt_35_turbo = Model(
         ChatgptNext,
         Koala,
         OpenaiChat,
+        Aichatos,
+        Cnote,
+        Feedough,
     ])
 )
 
@@ -117,19 +125,31 @@ gigachat_pro = Model(
 llama2_7b = Model(
     name          = "meta-llama/Llama-2-7b-chat-hf",
     base_provider = 'meta',
-    best_provider = RetryProvider([Llama2, DeepInfra])
+    best_provider = RetryProvider([Llama, DeepInfra])
 )
 
 llama2_13b = Model(
     name          = "meta-llama/Llama-2-13b-chat-hf",
     base_provider = 'meta',
-    best_provider = RetryProvider([Llama2, DeepInfra])
+    best_provider = RetryProvider([Llama, DeepInfra])
 )
 
 llama2_70b = Model(
     name          = "meta-llama/Llama-2-70b-chat-hf",
     base_provider = "meta",
-    best_provider = RetryProvider([Llama2, DeepInfra, HuggingChat])
+    best_provider = RetryProvider([Llama, DeepInfra, HuggingChat])
+)
+
+llama3_8b_instruct = Model(
+    name          = "meta-llama/Meta-Llama-3-8b-instruct",
+    base_provider = "meta",
+    best_provider = RetryProvider([Llama])
+)
+
+llama3_70b_instruct = Model(
+    name          = "meta-llama/Meta-Llama-3-70b-instruct",
+    base_provider = "meta",
+    best_provider = RetryProvider([Llama, HuggingChat])
 )
 
 codellama_34b_instruct = Model(
@@ -279,6 +299,12 @@ command_r_plus = Model(
     best_provider = RetryProvider([HuggingChat, Cohere])
 )
 
+blackbox = Model(
+    name = 'blackbox',
+    base_provider = 'blackbox',
+    best_provider = Blackbox
+)
+
 class ModelUtils:
     """
     Utility class for mapping string identifiers to Model instances.
@@ -302,10 +328,12 @@ class ModelUtils:
         'gpt-4-32k-0613' : gpt_4_32k_0613,
         'gpt-4-turbo'    : gpt_4_turbo,
 
-        # Llama 2
+        # Llama
         'llama2-7b' : llama2_7b,
         'llama2-13b': llama2_13b,
         'llama2-70b': llama2_70b,
+        'llama3-8b-instruct' : llama3_8b_instruct,
+        'llama3-70b-instruct': llama3_70b_instruct,
         'codellama-34b-instruct': codellama_34b_instruct,
         'codellama-70b-instruct': codellama_70b_instruct,
 
@@ -331,6 +359,7 @@ class ModelUtils:
         'claude-3-sonnet': claude_3_sonnet,
         
         # other
+        'blackbox': blackbox,
         'command-r+': command_r_plus,
         'dbrx-instruct': dbrx_instruct,
         'lzlv-70b': lzlv_70b,
