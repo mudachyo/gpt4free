@@ -51,18 +51,12 @@ class AppConfig():
     list_ignored_providers: Optional[list[str]] = None
     g4f_api_key: Optional[str] = None
     ignore_cookie_files: bool = False
+    defaults: dict = {}
 
     @classmethod
-    def set_list_ignored_providers(cls, ignored: list[str]):
-        cls.list_ignored_providers = ignored
-
-    @classmethod
-    def set_g4f_api_key(cls, key: str = None):
-        cls.g4f_api_key = key
-
-    @classmethod
-    def set_ignore_cookie_files(cls, value: bool):
-        cls.ignore_cookie_files = value
+    def set_config(cls, **data):
+        for key, value in data.items():
+            setattr(cls, key, value)
 
 class Api:
     def __init__(self, app: FastAPI) -> None:
@@ -152,7 +146,11 @@ class Api:
                         if auth_header and auth_header != "Bearer":
                             config.api_key = auth_header
                 response = self.client.chat.completions.create(
-                    **config.dict(exclude_none=True),
+    **{
+        **AppConfig.defaults,
+        **config.dict(exclude_none=True),
+    },
+                    
                     ignored=AppConfig.list_ignored_providers
                 )
             except Exception as e:
