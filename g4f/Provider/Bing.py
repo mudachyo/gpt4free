@@ -11,7 +11,8 @@ from datetime import datetime, date
 from ..typing import AsyncResult, Messages, ImageType, Cookies
 from ..image import ImageRequest
 from ..errors import ResponseError, ResponseStatusError, RateLimitError
-from ..requests import StreamSession, DEFAULT_HEADERS
+from ..requests import DEFAULT_HEADERS
+from ..requests.aiohttp import StreamSession
 from .base_provider import AsyncGeneratorProvider, ProviderModelMixin
 from .helper import get_random_hex
 from .bing.upload_image import upload_image
@@ -467,7 +468,7 @@ async def stream_generate(
                             continue
                         try:
                             response = json.loads(obj)
-                        except json.JSONDecodeError:
+                        except ValueError:
                             continue
                         if response and response.get('type') == 1 and response['arguments'][0].get('messages'):
                             message = response['arguments'][0]['messages'][0]
