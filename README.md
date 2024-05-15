@@ -2,7 +2,7 @@
 
 <a href="https://trendshift.io/repositories/1692" target="_blank"><img src="https://trendshift.io/api/badge/repositories/1692" alt="xtekky%2Fgpt4free | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
-Written by [@xtekky](https://github.com/hlohaus) & maintained by [@hlohaus](https://github.com/hlohaus)
+Written by [@xtekky](https://github.com/xtekky) & maintained by [@hlohaus](https://github.com/hlohaus)
 
 <div id="top"></div>
 
@@ -24,6 +24,7 @@ docker pull hlohaus789/g4f
 
 ## 🆕 What's New
 
+- Added `gpt-4o`, simply use `gpt-4o` in `chat.completion.create`.
 - Installation Guide for Windows (.exe): 💻 [#installation-guide-for-windows](#installation-guide-for-windows-exe)
 - Join our Telegram Channel: 📨 [telegram.me/g4f_channel](https://telegram.me/g4f_channel)
 - Join our Discord Group: 💬 [discord.gg/XfybzPXPH5](https://discord.gg/XfybzPXPH5)
@@ -301,7 +302,7 @@ set G4F_PROXY=http://host:port
 While we wait for gpt-5, here is a list of new models that are at least better than gpt-3.5-turbo. **Some are better than gpt-4**. Expect this list to grow.
 
 | Website | Provider |  parameters | better than |
-| ------  | -------  |  ------ |  ------ | 
+| ------  | -------  |  ------ |  ------ |
 | [claude-3-opus](https://anthropic.com/) | `g4f.Provider.You` | ?B | gpt-4-0125-preview |
 | [command-r+](https://txt.cohere.com/command-r-plus-microsoft-azure/) | `g4f.Provider.HuggingChat` | 104B | gpt-4-0314 |
 | [llama-3-70b](https://meta.ai/) | `g4f.Provider.Llama` or `DeepInfra` | 70B | gpt-4-0314 |
