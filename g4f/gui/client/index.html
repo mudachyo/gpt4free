@@ -32,10 +32,10 @@
     <script type="module" src="https://cdn.jsdelivr.net/npm/mistral-tokenizer-js" async>
         import mistralTokenizer from "mistral-tokenizer-js"
     </script>
-    <script type="module" src="https://belladoreai.github.io/llama-tokenizer-js/llama-tokenizer.js" async>
+    <script type="module" src="https://cdn.jsdelivr.net/gh/belladoreai/llama-tokenizer-js@master/llama-tokenizer.js" async>
         import llamaTokenizer from "llama-tokenizer-js"
     </script>
-    <script src="https://unpkg.com/gpt-tokenizer/dist/cl100k_base.js" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/gpt-tokenizer/dist/cl100k_base.js" async></script>
     <script src="/static/js/text_to_speech/index.js" async></script>
     <!--
             <script src="/static/js/whisper-web/index.js" async></script>
@@ -92,6 +92,11 @@
         <div class="settings hidden">
             <div class="paper">
             <h3>Settings</h3>
+            <div class="field">
+                <span class="label">Enable Dark Mode</span>
+                <input type="checkbox" id="darkMode" checked />
+                <label for="darkMode" class="toogle" title=""></label>
+            </div>
             <div class="field">
                 <span class="label">Web Access with DuckDuckGo</span>
                 <input type="checkbox" id="switch" />
@@ -169,8 +174,11 @@
             </div>
         </div>
         <div class="conversation">
-            <textarea id="systemPrompt" class="box" placeholder="System prompt"></textarea>    
+            <textarea id="systemPrompt" class="box" placeholder="System prompt"></textarea>
             <div id="messages" class="box"></div>
+            <button class="slide-systemPrompt">
+                <i class="fa-solid fa-angles-up"></i>
+            </button>
             <div class="toolbar">
                 <div id="input-count" class="">
                     <button class="hide-input">

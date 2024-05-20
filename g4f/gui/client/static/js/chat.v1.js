@@ -192,6 +192,26 @@ const register_message_buttons = async () => {
             })
         }
     });
+    document.querySelectorAll(".message .fa-whatsapp").forEach(async (el) => {
+        if (!el.parentElement.href) {
+            const text = el.parentElement.parentElement.parentElement.innerText;
+            el.parentElement.href = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        }
+    });
+    document.querySelectorAll(".message .fa-print").forEach(async (el) => {
+        if (!("click" in el.dataset)) {
+            el.dataset.click = "true";
+            el.addEventListener("click", async () => {
+                const message_el = el.parentElement.parentElement.parentElement;
+                el.classList.add("clicked");
+                message_box.scrollTop = 0;
+                message_el.classList.add("print");
+                setTimeout(() => el.classList.remove("clicked"), 1000);
+                setTimeout(() => message_el.classList.remove("print"), 1000);
+                window.print()
+            })
+        }
+    });
 }
 
 const delete_conversations = async () => {
@@ -253,6 +273,8 @@ const handle_ask = async () => {
                     ${count_words_and_tokens(message, get_selected_model())}
                     <i class="fa-solid fa-volume-high"></i>
                     <i class="fa-regular fa-clipboard"></i>
+                    <a><i class="fa-brands fa-whatsapp"></i></a>
+                    <i class="fa-solid fa-print"></i>
                 </div>
             </div>
         </div>
@@ -302,7 +324,7 @@ const prepare_messages = (messages, message_index = -1) => {
     }
     messages.forEach((new_message) => {
         // Include only not regenerated messages
-        if (!new_message.regenerate) {
+        if (new_message && !new_message.regenerate) {
             // Remove generated images from history
             new_message.content = filter_message(new_message.content);
             delete new_message.provider;
@@ -625,6 +647,8 @@ const load_conversation = async (conversation_id, scroll=true) => {
                         ${count_words_and_tokens(item.content, next_provider?.model)}
                         <i class="fa-solid fa-volume-high"></i>
                         <i class="fa-regular fa-clipboard"></i>
+                        <a><i class="fa-brands fa-whatsapp"></i></a>
+                        <i class="fa-solid fa-print"></i>
                     </div>
                 </div>
             </div>
@@ -1108,8 +1132,11 @@ async function on_api() {
     await load_settings_storage()
 
     const hide_systemPrompt = document.getElementById("hide-systemPrompt")
+    const slide_systemPrompt_icon = document.querySelector(".slide-systemPrompt i");
     if (hide_systemPrompt.checked) {
         systemPrompt.classList.add("hidden");
+        slide_systemPrompt_icon.classList.remove("fa-angles-up");
+        slide_systemPrompt_icon.classList.add("fa-angles-down");
     }
     hide_systemPrompt.addEventListener('change', async (event) => {
         if (event.target.checked) {
@@ -1118,6 +1145,13 @@ async function on_api() {
             systemPrompt.classList.remove("hidden");
         }
     });
+    document.querySelector(".slide-systemPrompt")?.addEventListener("click", () => {
+        hide_systemPrompt.click();
+        let checked = hide_systemPrompt.checked;
+        systemPrompt.classList[checked ? "add": "remove"]("hidden");
+        slide_systemPrompt_icon.classList[checked ? "remove": "add"]("fa-angles-up");
+        slide_systemPrompt_icon.classList[checked ? "add": "remove"]("fa-angles-down");
+    });
     const messageInputHeight = document.getElementById("message-input-height");
     if (messageInputHeight) {
         if (messageInputHeight.value) {
@@ -1125,6 +1159,19 @@ async function on_api() {
         }
         messageInputHeight.addEventListener('change', async () => {
             messageInput.style.maxHeight = `${messageInputHeight.value}px`;
+        });
+    }
+    const darkMode = document.getElementById("darkMode");
+    if (darkMode) {
+        if (!darkMode.checked) {
+            document.body.classList.add("white");
+        }
+        darkMode.addEventListener('change', async (event) => {
+            if (event.target.checked) {
+                document.body.classList.remove("white");
+            } else {
+                document.body.classList.add("white");
+            }
         });
     }
 }

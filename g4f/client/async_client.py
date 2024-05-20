@@ -171,7 +171,8 @@ async def iter_image_response(
         if isinstance(chunk, ImageProviderResponse):
             if response_format == "b64_json":
                 async with ClientSession(
-                    connector=get_connector(connector, proxy)
+                    connector=get_connector(connector, proxy),
+                    cookies=chunk.options.get("cookies")
                 ) as session:
                     async def fetch_image(image):
                         async with session.get(image) as response:
@@ -183,9 +184,10 @@ async def iter_image_response(
             return ImagesResponse([Image(None, image, chunk.alt) for image in chunk.get_list()], int(time.time()))
 
 def create_image(provider: ProviderType, prompt: str, model: str = "", **kwargs) -> AsyncIterator:
-    prompt = f"create a image with: {prompt}"
-    if provider.__name__ == "You":
+    if isinstance(provider, type) and provider.__name__ == "You":
         kwargs["chat_mode"] = "create"
+    else:
+        prompt = f"create a image with: {prompt}"
     return provider.create_async_generator(
         model,
         [{"role": "user", "content": prompt}],
