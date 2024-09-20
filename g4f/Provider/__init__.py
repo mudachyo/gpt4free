@@ -61,6 +61,8 @@ from .Upstage          import Upstage
 from .Vercel           import Vercel
 from .WhiteRabbitNeo   import WhiteRabbitNeo
 from .You              import You
+from .ChatGpt          import ChatGpt
+from .ChatGptEs        import ChatGptEs
 
 import sys
 
