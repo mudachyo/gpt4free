@@ -22,6 +22,8 @@ from g4f.client import Client, ChatCompletion, ChatCompletionChunk, ImagesRespon
 from g4f.typing import Messages
 from g4f.cookies import read_cookie_files
 
+logger = logging.getLogger(__name__)
+
 def create_app(g4f_api_key: str = None):
     app = FastAPI()
 
@@ -193,21 +195,25 @@ class Api:
                     return JSONResponse(response_list[0].to_json())
 
                 # Streaming response
+                async def async_generator(sync_gen):
+                    for item in sync_gen:
+                        yield item
+
                 async def streaming():
                     try:
-                        async for chunk in response:
+                        async for chunk in async_generator(response):
                             yield f"data: {json.dumps(chunk.to_json())}\n\n"
                     except GeneratorExit:
                         pass
                     except Exception as e:
-                        logging.exception(e)
+                        logger.exception(e)
                         yield f'data: {format_exception(e, config)}\n\n'
                     yield "data: [DONE]\n\n"
 
                 return StreamingResponse(streaming(), media_type="text/event-stream")
 
             except Exception as e:
-                logging.exception(e)
+                logger.exception(e)
                 return Response(content=format_exception(e, config), status_code=500, media_type="application/json")
 
         @self.app.post("/v1/images/generate")
@@ -219,10 +225,10 @@ class Api:
                     response_format=config.response_format
                 )
                 # Convert Image objects to dictionaries
-                response_data = [image.to_dict() for image in response.data]
+                response_data = [{"url": image.url, "b64_json": image.b64_json} for image in response.data]
                 return JSONResponse({"data": response_data})
             except Exception as e:
-                logging.exception(e)
+                logger.exception(e)
                 return Response(content=format_exception(e, config), status_code=500, media_type="application/json")
 
         @self.app.post("/v1/completions")
